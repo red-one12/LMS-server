@@ -36,6 +36,7 @@ async function run() {
 
     const database = client.db("LMS");
     const books_category_collection = database.collection("books_category");
+    const all_books_Collections = database.collection("allBooks");
 
 
 
@@ -43,6 +44,18 @@ async function run() {
     app.get('/books-category', async(req, res) => {
       const booksCategory = books_category_collection.find();
       const result = await booksCategory.toArray();
+      res.send(result);
+    })
+
+
+
+
+
+
+    // books related apis
+    app.get('/books', async(req, res) => {
+      const books = all_books_Collections.find();
+      const result = await books.toArray();
       res.send(result);
     })
 
