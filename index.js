@@ -34,8 +34,17 @@ async function run() {
     await client.connect();
 
 
+    const database = client.db("LMS");
+    const books_category_collection = database.collection("books_category");
 
-    
+
+
+    // books category related apis 
+    app.get('/books-category', async(req, res) => {
+      const booksCategory = books_category_collection.find();
+      const result = await booksCategory.toArray();
+      res.send(result);
+    })
 
 
 
