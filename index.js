@@ -1,6 +1,6 @@
 const express = require('express')
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const app = express()
 const port = process.env.PORT || 5000;
@@ -60,10 +60,68 @@ async function run() {
     })
 
 
+    app.get('/books/:category', async (req, res) => {
+      const category = req.params.category; 
+      const query = { category: category }; 
+      const books = all_books_Collections.find(query); 
+      const result = await books.toArray(); 
+      res.send(result); 
+    });
+
+
+
+    app.get('/book/:id', async (req, res) => {
+      
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id)}
+      const result = await all_books_Collections.findOne(query);
+      res.send(result);
+    });
 
 
 
 
+    app.post('/borrow/:id', async (req, res) => {
+      const { id } = req.params;
+      const { user, returnDate } = req.body;
+    
+      try {
+        
+        const book = await all_books_Collections.findOne({ _id: new ObjectId(id), quantity: { $gt: 0 } });
+    
+        if (!book) {
+          return res.status(400).json({ message: "Book is out of stock or does not exist" });
+        }
+    
+        
+        const updatedBook = await all_books_Collections.updateOne(
+          { _id: new ObjectId(id) },
+          { $inc: { quantity: -1 } }
+        );
+    
+        
+        const borrowedBooksCollection = database.collection("borrowedBooks");
+        const borrowRecord = {
+          bookId: id,
+          user,
+          returnDate,
+          borrowedAt: new Date(),
+        };
+    
+        await borrowedBooksCollection.insertOne(borrowRecord);
+    
+        res.status(200).json({ message: "Book borrowed successfully", updatedBook });
+      } catch (error) {
+        console.error("Error borrowing book:", error);
+        res.status(500).json({ message: "An error occurred while borrowing the book" });
+      }
+    });
+    
+
+
+    
+    
+    
 
 
 
