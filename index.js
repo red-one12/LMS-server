@@ -116,6 +116,26 @@ async function run() {
         res.status(500).json({ message: "An error occurred while borrowing the book" });
       }
     });
+
+
+
+    app.put('/book/:id', async (req, res) => {
+      const { id } = req.params;
+      const updatedBook = req.body; 
+    
+      try {
+        const result = await all_books_Collections.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedBook }
+        );
+    
+        res.status(200).json({ message: "Book updated successfully", result });
+      } catch (error) {
+        console.error("Error updating book:", error);
+        res.status(500).json({ message: "An error occurred while updating the book" });
+      }
+    });
+    
     
 
 
