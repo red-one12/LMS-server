@@ -191,18 +191,19 @@ app.get('/borrowedBooks/:email', async (req, res) => {
 
 
 
+
 // API to return a book
 app.delete('/borrowedBooks/:id', async (req, res) => {
   const borrowedBookId = req.params.id;
   try {
-
+   
     const borrowedBook = await borrowedBooksCollection.findOne({ _id: new ObjectId(borrowedBookId) });
 
     if (!borrowedBook) {
       return res.status(404).send({ message: 'Borrowed book not found' });
     }
 
-    
+
     const updateResult = await all_books_Collections.updateOne(
       { _id: new ObjectId(borrowedBook.bookId) },
       { $inc: { quantity: 1 } }
@@ -221,6 +222,12 @@ app.delete('/borrowedBooks/:id', async (req, res) => {
     res.status(500).send({ message: 'An error occurred while returning the book' });
   }
 });
+
+
+
+
+
+
 
 
     
