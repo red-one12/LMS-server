@@ -1,5 +1,6 @@
 const express = require('express')
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const app = express()
@@ -34,6 +35,18 @@ async function run() {
     await client.connect();
 
 
+
+    // auth related apis
+    app.post('/jwt', async(req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.JWT_SECRET, {expiresIn: '1h'});
+      res.send(token);
+    })
+
+
+
+
+
     const database = client.db("LMS");
     const books_category_collection = database.collection("books_category");
     const all_books_Collections = database.collection("allBooks");
@@ -54,11 +67,25 @@ async function run() {
 
 
     // books related apis
+
+
+    app.post('/books', async (req, res) => {
+      const newBook = req.body; 
+      const result = await all_books_Collections.insertOne(newBook);
+    
+      res.send(result);
+    });
+    
+
+
+
     app.get('/books', async(req, res) => {
       const books = all_books_Collections.find();
       const result = await books.toArray();
       res.send(result);
     })
+
+
 
 
     app.get('/books/:category', async (req, res) => {
