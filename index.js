@@ -37,6 +37,7 @@ async function run() {
     const database = client.db("LMS");
     const books_category_collection = database.collection("books_category");
     const all_books_Collections = database.collection("allBooks");
+    const borrowedBooksCollection = database.collection('borrowedBooks');
 
 
 
@@ -81,44 +82,6 @@ async function run() {
 
 
 
-    app.post('/borrow/:id', async (req, res) => {
-      const { id } = req.params;
-      const { user, returnDate } = req.body;
-    
-      try {
-        
-        const book = await all_books_Collections.findOne({ _id: new ObjectId(id), quantity: { $gt: 0 } });
-    
-        if (!book) {
-          return res.status(400).json({ message: "Book is out of stock or does not exist" });
-        }
-    
-        
-        const updatedBook = await all_books_Collections.updateOne(
-          { _id: new ObjectId(id) },
-          { $inc: { quantity: -1 } }
-        );
-    
-        
-        const borrowedBooksCollection = database.collection("borrowedBooks");
-        const borrowRecord = {
-          bookId: id,
-          user,
-          returnDate,
-          borrowedAt: new Date(),
-        };
-    
-        await borrowedBooksCollection.insertOne(borrowRecord);
-    
-        res.status(200).json({ message: "Book borrowed successfully", updatedBook });
-      } catch (error) {
-        console.error("Error borrowing book:", error);
-        res.status(500).json({ message: "An error occurred while borrowing the book" });
-      }
-    });
-
-
-
     app.put('/book/:id', async (req, res) => {
       const { id } = req.params;
       const updatedBook = req.body; 
@@ -135,6 +98,132 @@ async function run() {
         res.status(500).json({ message: "An error occurred while updating the book" });
       }
     });
+
+
+
+
+
+
+    // borrow related apis
+
+    app.post('/borrowedBooks', async (req, res) => {
+      const borrowedBook = req.body;
+      const bookId = borrowedBook.bookId;
+    
+      try {
+        
+        const book = await all_books_Collections.findOne({ _id: new ObjectId(bookId) });
+    
+        if (book.quantity > 0) {
+          
+          const updateResult = await all_books_Collections.updateOne(
+            { _id: new ObjectId(bookId) },
+            { $inc: { quantity: -1 } }
+          );
+    
+   
+          const insertResult = await borrowedBooksCollection.insertOne(borrowedBook);
+    
+          res.status(200).send({
+            message: 'Book borrowed successfully',
+            updateResult,
+            insertResult,
+          });
+        } else {
+          res.status(400).send({ message: 'Book is out of stock' });
+        }
+      } catch (error) {
+        console.error('Error borrowing book:', error);
+        res.status(500).send({ message: 'An error occurred while borrowing the book' });
+      }
+    });
+
+
+
+
+
+
+    // API to get all borrowed books
+app.get('/borrowedBooks', async (req, res) => {
+  try {
+ 
+    const borrowedBooks = await borrowedBooksCollection.find().toArray();
+
+    
+    const borrowedBooksWithDetails = await Promise.all(
+      borrowedBooks.map(async (borrowedBook) => {
+        const book = await all_books_Collections.findOne({ _id: new ObjectId(borrowedBook.bookId) });
+        return {
+          ...borrowedBook,
+          bookDetails: book,
+        };
+      })
+    );
+
+    res.status(200).send(borrowedBooksWithDetails);
+  } catch (error) {
+    console.error('Error fetching borrowed books:', error);
+    res.status(500).send({ message: 'An error occurred while fetching borrowed books' });
+  }
+});
+
+
+
+
+
+
+
+// API to get borrowed books filtered by user email
+app.get('/borrowedBooks/:email', async (req, res) => {
+  const userEmail = req.params.email;
+  try {
+    const borrowedBooks = await borrowedBooksCollection.find({ email: userEmail }).toArray();
+    res.status(200).send(borrowedBooks);
+  } catch (error) {
+    console.error('Error fetching user-specific borrowed books:', error);
+    res.status(500).send({ message: 'An error occurred while fetching borrowed books' });
+  }
+});
+
+
+
+
+
+
+
+// API to return a book
+app.delete('/borrowedBooks/:id', async (req, res) => {
+  const borrowedBookId = req.params.id;
+  try {
+
+    const borrowedBook = await borrowedBooksCollection.findOne({ _id: new ObjectId(borrowedBookId) });
+
+    if (!borrowedBook) {
+      return res.status(404).send({ message: 'Borrowed book not found' });
+    }
+
+    
+    const updateResult = await all_books_Collections.updateOne(
+      { _id: new ObjectId(borrowedBook.bookId) },
+      { $inc: { quantity: 1 } }
+    );
+
+    
+    const deleteResult = await borrowedBooksCollection.deleteOne({ _id: new ObjectId(borrowedBookId) });
+
+    res.status(200).send({
+      message: 'Book returned successfully',
+      updateResult,
+      deleteResult,
+    });
+  } catch (error) {
+    console.error('Error returning book:', error);
+    res.status(500).send({ message: 'An error occurred while returning the book' });
+  }
+});
+
+
+    
     
     
 
